@@ -57,25 +57,33 @@ export class MonoBankExchangeRateStrategy implements IExchangeRateStrategy {
     );
 
     if (direct) {
-      let value: number | undefined;
-
       if (direct.currencyCodeA === fromCode && direct.currencyCodeB === toCode) {
-        value = direct.rateBuy ?? direct.rateSell ?? direct.rateCross;
-      } else if (direct.currencyCodeA === toCode && direct.currencyCodeB === fromCode) {
-        if (direct.rateSell) value = 1 / direct.rateSell;
-        else if (direct.rateBuy) value = 1 / direct.rateBuy;
-        else if (direct.rateCross) value = 1 / direct.rateCross;
-      }
-
-      if (value !== undefined) {
         return {
           currencyCodeA: fromCode,
           currencyCodeB: toCode,
           date: direct.date,
-          rateBuy: value,
-          rateSell: value,
-          rateCross: value
+          rateBuy: direct.rateSell ?? direct.rateBuy ?? direct.rateCross,
+          rateSell: direct.rateBuy ?? direct.rateSell ?? direct.rateCross,
+          rateCross: direct.rateCross
         };
+      } else if (direct.currencyCodeA === toCode && direct.currencyCodeB === fromCode) {
+        const rateSellValue = direct.rateSell ? 1 / direct.rateSell : 
+                              direct.rateBuy ? 1 / direct.rateBuy : 
+                              direct.rateCross ? 1 / direct.rateCross : undefined;
+        const rateBuyValue = direct.rateBuy ? 1 / direct.rateBuy :
+                             direct.rateSell ? 1 / direct.rateSell :
+                             direct.rateCross ? 1 / direct.rateCross : undefined;
+        
+        if (rateSellValue !== undefined) {
+          return {
+            currencyCodeA: fromCode,
+            currencyCodeB: toCode,
+            date: direct.date,
+            rateBuy: rateBuyValue,
+            rateSell: rateSellValue,
+            rateCross: direct.rateCross
+          };
+        }
       }
     }
 

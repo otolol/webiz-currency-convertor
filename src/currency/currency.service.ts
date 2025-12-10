@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
 import { CreateConversionDto } from './dto/create-conversion.dto';
 import { RedisService } from 'src/redis/redis.service';
 import { ExchangeRate } from 'src/exchange-rate/domain/exchange-rate.entity';
@@ -9,6 +9,7 @@ import { ConversionResponseDto } from './dto/conversion-response.dto';
 
 @Injectable()
 export class CurrencyService {
+  private readonly logger = new Logger(CurrencyService.name);
 
   constructor(
     private readonly redisService: RedisService,
@@ -18,16 +19,12 @@ export class CurrencyService {
   ) { }
 
   public async convert({ sourceCode, targetCode, amount }: CreateConversionDto): Promise<ConversionResponseDto> {
-    let cachedRate = null;
-    try {
-      cachedRate = (await this.redisService.get<ExchangeRate>(`conversion:${sourceCode}:${targetCode}`))
-        || (await this.redisService.get<ExchangeRate>(`conversion:${targetCode}:${sourceCode}`));
-    } catch (error) {
-      throw new BadRequestException('Invalid conversion parameters.');
-    }
-
+    this.logger.log(`Converting ${amount} ${sourceCode} to ${targetCode}`, { sourceCode, targetCode, amount });
+    const cachedRate = (await this.redisService.get<ExchangeRate>(`conversion:${sourceCode}:${targetCode}`))
+      || (await this.redisService.get<ExchangeRate>(`conversion:${targetCode}:${sourceCode}`));
 
     if (cachedRate) {
+      this.logger.log(`Found cached rate for ${sourceCode} to ${targetCode}`, { cachedRate });
       return {
         convertedAmount: this.calculate(cachedRate, sourceCode, amount),
         originalAmount: amount,
@@ -35,20 +32,22 @@ export class CurrencyService {
         targetCurrency: targetCode,
       }
     } else {
+      this.logger.log(`No cached rate found for ${sourceCode} to ${targetCode}, fetching from exchange rate strategy`);
       let rate = null;
       rate = await this.exchangeRateStrategy.getRate(sourceCode, targetCode);
 
       if (!rate) {
-        throw new BadRequestException('Invalid conversion parameters.');
+        this.logger.error(`Unable to find exchange rate for ${sourceCode} to ${targetCode}`);
+        throw new BadRequestException(`Unable to find exchange rate for ${sourceCode} to ${targetCode}`);
       }
-      if (rate) {
-        await this.redisService.set(`conversion:${sourceCode}:${targetCode}`, rate, this.configService.get<number>(`CACHE_TTL`));
-        return {
-          convertedAmount: this.calculate(rate, sourceCode, amount),
-          originalAmount: amount,
-          sourceCurrency: sourceCode,
-          targetCurrency: targetCode,
-        }
+
+      await this.redisService.set(`conversion:${sourceCode}:${targetCode}`, rate, this.configService.get<number>(`REDIS_CACHE_TTL`));
+      this.logger.log(`Set cached rate for ${sourceCode} to ${targetCode}`, { rate });  
+      return {
+        convertedAmount: this.calculate(rate, sourceCode, amount),
+        originalAmount: amount,
+        sourceCurrency: sourceCode,
+        targetCurrency: targetCode,
       }
     }
   }

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { CurrencyModule } from './currency/currency.module';
 import { RedisModule } from './redis/redis.module';
 import { ExchangeRateModule } from './exchange-rate/exchange-rate.module';
@@ -13,6 +14,10 @@ const ENV = process.env.NODE_ENV;
     CurrencyModule,
     RedisModule,
     ExchangeRateModule,
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 10,
+    }]),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: !ENV ? '.env' : `.env.${ENV}`,

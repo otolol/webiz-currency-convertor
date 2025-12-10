@@ -1,5 +1,6 @@
 import { IsString, IsNotEmpty, IsNumber, IsPositive, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsValidCurrency } from 'src/common/validators/is-valid-currency.validator';
 
 export class CreateConversionDto {
   @ApiProperty({
@@ -9,6 +10,7 @@ export class CreateConversionDto {
   @IsString()
   @IsNotEmpty()
   @Length(3, 3)
+  @IsValidCurrency()
   sourceCode: string;
 
   @ApiProperty({
@@ -18,6 +20,7 @@ export class CreateConversionDto {
   @IsString()
   @IsNotEmpty()
   @Length(3, 3)
+  @IsValidCurrency()
   targetCode: string;
 
   @ApiProperty({

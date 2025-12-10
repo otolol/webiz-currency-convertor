@@ -143,5 +143,6 @@ export class MonoBankExchangeRateStrategy implements IExchangeRateStrategy {
         }
       }
     }
+    return null;
   }
 }

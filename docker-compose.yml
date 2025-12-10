@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "${PORT:-3001}:3000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MONOBANK_API_URL=https://api.monobank.ua/bank/currency
+    depends_on:
+      - redis
+    networks:
+      - currency-net
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - currency-net
+
+networks:
+  currency-net:
+    driver: bridge
